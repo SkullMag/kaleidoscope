@@ -6,6 +6,8 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Verifier.h>
 
+#include "src/lexer.h"
+
 // ========================================
 // LLVM variables
 // ========================================
@@ -13,73 +15,7 @@ static std::unique_ptr<llvm::LLVMContext> TheContext;
 static std::unique_ptr<llvm::IRBuilder<>> Builder;
 static std::unique_ptr<llvm::Module> TheModule;
 static std::map<std::string, llvm::Value *> NamedValues;
-
-
-// ========================================
-// LEXER
-// ========================================
-
-enum Token {
-  tok_eof = -1,
-
-  // commands
-  tok_def = -2,
-  tok_extern = -3,
-
-  // primary
-  tok_identifier = -4,
-  tok_number = -5
-};
-
-static std::string IdentifierStr; // filled in if tok_idenfitier
-static double NumVal; // filled in if tok_number
-
-static int gettok() {
-  static int LastChar = ' ';
-
-  while (isspace(LastChar)) 
-    LastChar = getchar();
-
-  if (isalpha(LastChar)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
-    IdentifierStr = LastChar;
-    while (isalnum((LastChar = getchar())))
-      IdentifierStr += LastChar;
-
-    if (IdentifierStr == "def")
-      return tok_def;
-    if (IdentifierStr == "extern")
-      return tok_extern;
-    return tok_identifier;
-  }
-  if (isdigit(LastChar) || LastChar == '.') {   // Number: [0-9.]+
-    // TODO: fix error with reading 1.23.45.67
-    std::string NumStr;
-    do {
-      NumStr += LastChar;
-      LastChar = getchar();
-    } while (isdigit(LastChar) || LastChar == '.');
-
-    NumVal = strtod(NumStr.c_str(), 0);
-    return tok_number;
-  }
-  if (LastChar == EOF)
-    return tok_eof;
-
-  if (LastChar == '#') {
-    // Comment until end of line.
-    do
-      LastChar = getchar();
-    while (LastChar != EOF && LastChar != '\n' && LastChar != '\r');
-
-    if (LastChar != EOF)
-      return gettok();
-  }
-
-  // Otherwise, just return the character as its ascii value.
-  int ThisChar = LastChar;
-  LastChar = getchar();
-  return ThisChar;
-}
+static std::unique_ptr<Lexer> TheLexer;
 
 // ========================================
 // PARSER
@@ -166,7 +102,7 @@ public:
 /// lexer and updates CurTok with its results.
 static int CurTok;
 static int getNextToken() {
-  return CurTok = gettok();
+  return CurTok = TheLexer->gettok();
 }
 
 // Error handling
@@ -189,7 +125,7 @@ static std::unique_ptr<ExprAST> ParseExpression();
 
 /// numberexpr ::= number
 static std::unique_ptr<ExprAST> ParseNumberExpr() {
-  auto Result = std::make_unique<NumberExprAST>(NumVal);
+  auto Result = std::make_unique<NumberExprAST>(TheLexer->NumVal);
   getNextToken(); // consume the number
   return std::move(Result);
 }
@@ -211,7 +147,7 @@ static std::unique_ptr<ExprAST> ParseParenExpr() {
 ///   ::= identifier
 ///   ::= identifier '(' expression* ')'
 static std::unique_ptr<ExprAST> ParseIdentifierExpr() {
-  std::string IdName = IdentifierStr;
+  std::string IdName = TheLexer->IdentifierStr;
 
   getNextToken(); // eat identifier.
 
@@ -327,7 +263,7 @@ static std::unique_ptr<PrototypeAST> ParsePrototype() {
   if (CurTok != tok_identifier)
     return LogErrorP("Expected function name in prototype");
 
-  std::string FnName = IdentifierStr;
+  std::string FnName = TheLexer->IdentifierStr;
   getNextToken();
 
   if (CurTok != '(')
@@ -336,7 +272,7 @@ static std::unique_ptr<PrototypeAST> ParsePrototype() {
   // Read the list of argument names.
   std::vector<std::string> ArgNames;
   while (getNextToken() == tok_identifier)
-    ArgNames.push_back(IdentifierStr);
+    ArgNames.push_back(TheLexer->IdentifierStr);
   if (CurTok != ')')
     return LogErrorP("Expected ')' in prototype");
 
@@ -552,6 +488,9 @@ static void InitializeModule() {
 
   // Create a new builder for the module.
   Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
+
+  // Create new lexer
+  TheLexer = std::make_unique<Lexer>();
 }
 
 int main() {
@@ -562,11 +501,11 @@ int main() {
   BinopPrecedence['-'] = 20;
   BinopPrecedence['*'] = 40;  // highest.
 
+  InitializeModule();
+
   // Prime the first token.
   fprintf(stderr, "ready> ");
   getNextToken();
-
-  InitializeModule();
 
   // Run the main "interpreter loop" now.
   MainLoop();
