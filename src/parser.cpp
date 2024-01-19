@@ -4,6 +4,7 @@
 #include "parser.h"
 #include "lexer.h"
 #include "ast.h"
+#include "toks.h"
 #include "errors.h"
 
 /// CurTok/getNextToken - Provide a simple token buffer.  CurTok is the current

@@ -8,6 +8,7 @@
 
 #include "src/errors.h"
 #include "src/parser.h"
+#include "src/interpreter.h"
 
 // ========================================
 // LLVM variables
@@ -17,6 +18,7 @@ static std::unique_ptr<llvm::IRBuilder<>> Builder;
 static std::unique_ptr<llvm::Module> TheModule;
 static std::map<std::string, llvm::Value *> NamedValues;
 static std::unique_ptr<Parser> TheParser;
+static std::unique_ptr<Interpreter> TheInterpreter;
 
 
 // ========================================
@@ -124,73 +126,6 @@ llvm::Function *FunctionAST::codegen() {
   return nullptr;
 }
 
-// ========================================
-// TOP LEVEL PARSING
-// ========================================
-static void HandleDefinition() {
-  if (auto FnAST = TheParser->ParseDefinition()) {
-    if (auto *FnIR = FnAST->codegen()) {
-      fprintf(stderr, "Parsed a function definition.\n");
-      FnIR->print(llvm::errs());
-      fprintf(stderr, "\n");
-    }
-  } else {
-    // Skip token for error recovery.
-    TheParser->getNextToken();
-  }
-}
-
-static void HandleExtern() {
-  if (auto ProtoAST = TheParser->ParseExtern()) {
-    if (auto *ProtoIR = ProtoAST->codegen()) {
-      fprintf(stderr, "Parsed an extern\n");
-      ProtoIR->print(llvm::errs());
-      fprintf(stderr, "\n");
-    }
-  } else {
-    // Skip token for error recovery.
-    TheParser->getNextToken();
-  }
-}
-
-static void HandleTopLevelExpression() {
-  // Evaluate a top-level expression into an anonymous function.
-  if (auto FnAST = TheParser->ParseTopLevelExpr()) {
-    if (auto *FnIR = FnAST->codegen()) {
-      fprintf(stderr, "Parsed a top-level expr\n");
-      FnIR->print(llvm::errs());
-      fprintf(stderr, "\n");
-      FnIR->eraseFromParent();
-    }
-  } else {
-    // Skip token for error recovery.
-    TheParser->getNextToken();
-  }
-}
-
-/// top ::= definition | external | expression | ';'
-static void MainLoop() {
-  while (true) {
-    fprintf(stderr, "ready> ");
-    switch (TheParser->CurTok) {
-    case tok_eof:
-      return;
-    case ';': // ignore top-level semicolons.
-      TheParser->getNextToken();
-      break;
-    case tok_def:
-      HandleDefinition();
-      break;
-    case tok_extern:
-      HandleExtern();
-      break;
-    default:
-      HandleTopLevelExpression();
-      break;
-    }
-  }
-}
-
 static void InitializeModule() {
   // Open a new context and module.
   TheContext = std::make_unique<llvm::LLVMContext>();
@@ -201,6 +136,9 @@ static void InitializeModule() {
 
   // Create new lexer
   TheParser = std::make_unique<Parser>();
+
+  // Create the interpreter
+  TheInterpreter = std::make_unique<Interpreter>(TheParser.get());
 }
 
 int main() {
@@ -218,7 +156,7 @@ int main() {
   TheParser->getNextToken();
 
   // Run the main "interpreter loop" now.
-  MainLoop();
+  TheInterpreter->MainLoop();
 
   // Print out all of the generated code.
   TheModule->print(llvm::errs(), nullptr);

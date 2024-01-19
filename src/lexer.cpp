@@ -1,5 +1,7 @@
 #include <string>
+
 #include "lexer.h"
+#include "toks.h"
 
 int Lexer::gettok() {
   static int LastChar = ' ';
