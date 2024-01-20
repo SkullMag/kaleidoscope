@@ -11,13 +11,9 @@
 #include "src/interpreter.h"
 #include "src/codegen.h"
 
-// ========================================
-// LLVM variables
-// ========================================
 static std::unique_ptr<llvm::LLVMContext> TheContext;
 static std::unique_ptr<llvm::IRBuilder<>> Builder;
 static std::unique_ptr<llvm::Module> TheModule;
-
 static std::unique_ptr<Parser> TheParser;
 static std::unique_ptr<Interpreter> TheInterpreter;
 static std::unique_ptr<LLVMCodegen> TheCodegen;
