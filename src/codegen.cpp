@@ -75,7 +75,6 @@ llvm::Function* LLVMCodegen::VisitPrototype(PrototypeAST* const ast) {
   return F;
 }
 
-
 llvm::Function* LLVMCodegen::VisitFunction(FunctionAST* const ast) {
   // TODO: https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl03.html#function-code-generation
 

@@ -6,7 +6,7 @@
 
 #include <llvm/IR/Value.h>
 
-#include "codegen.h"
+class Codegen;
 
 /// ExprAST - Base class for all expression nodes.
 class ExprAST {

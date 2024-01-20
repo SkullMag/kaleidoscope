@@ -9,12 +9,8 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 
-class NumberExprAST;
-class VariableExprAST;
-class BinaryExprAST;
-class CallExprAST;
-class PrototypeAST;
-class FunctionAST;
+#include "ast.h"
+
 
 class Codegen {
 public:
