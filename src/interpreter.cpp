@@ -28,7 +28,7 @@ void Interpreter::MainLoop() {
 
 void Interpreter::HandleDefinition() {
   if (auto FnAST = TheParser->ParseDefinition()) {
-    if (auto *FnIR = FnAST->codegen()) {
+    if (auto *FnIR = FnAST->accept(*TheCodegen)) {
       fprintf(stderr, "Parsed a function definition.\n");
       FnIR->print(llvm::errs());
       fprintf(stderr, "\n");
@@ -41,7 +41,7 @@ void Interpreter::HandleDefinition() {
 
 void Interpreter::HandleExtern() {
   if (auto ProtoAST = TheParser->ParseExtern()) {
-    if (auto *ProtoIR = ProtoAST->codegen()) {
+    if (auto *ProtoIR = ProtoAST->accept(*TheCodegen)) {
       fprintf(stderr, "Parsed an extern\n");
       ProtoIR->print(llvm::errs());
       fprintf(stderr, "\n");
@@ -55,7 +55,7 @@ void Interpreter::HandleExtern() {
 void Interpreter::HandleTopLevelExpression() {
   // Evaluate a top-level expression into an anonymous function.
   if (auto FnAST = TheParser->ParseTopLevelExpr()) {
-    if (auto *FnIR = FnAST->codegen()) {
+    if (auto *FnIR = FnAST->accept(*TheCodegen)) {
       fprintf(stderr, "Parsed a top-level expr\n");
       FnIR->print(llvm::errs());
       fprintf(stderr, "\n");

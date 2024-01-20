@@ -4,12 +4,14 @@
 #include <memory>
 
 #include "parser.h"
+#include "codegen.h"
 
 class Interpreter {
   Parser* TheParser;
+  Codegen* TheCodegen;
 
 public:
-  Interpreter(Parser* parser) : TheParser(parser) {};
+  Interpreter(Parser* parser, Codegen* codegen) : TheParser(parser), TheCodegen(codegen) {};
 
   // Starts an interpreter
   void MainLoop();
