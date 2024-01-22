@@ -21,14 +21,17 @@ int Lexer::gettok() {
     return tok_identifier;
   }
   if (isdigit(LastChar) || LastChar == '.') {   // Number: [0-9.]+
-    // TODO: fix error with reading 1.23.45.67
     std::string NumStr;
     do {
       NumStr += LastChar;
       LastChar = getchar();
     } while (isdigit(LastChar) || LastChar == '.');
 
-    NumVal = strtod(NumStr.c_str(), 0);
+    char *after;
+    NumVal = strtod(NumStr.c_str(), &after);
+    if (strlen(after) != 0) {
+      NumVal = std::numeric_limits<double>::quiet_NaN();
+    }
     return tok_number;
   }
   if (LastChar == EOF)

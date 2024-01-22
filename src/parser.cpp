@@ -1,5 +1,6 @@
 #include <memory>
 #include <map>
+#include <math.h>
 
 #include "parser.h"
 #include "lexer.h"
@@ -16,6 +17,8 @@ int Parser::getNextToken() {
 
 /// numberexpr ::= number
 std::unique_ptr<ExprAST> Parser::ParseNumberExpr() {
+  if (isnan(TheLexer->NumVal))
+    return LogError("invalid double specified");
   auto Result = std::make_unique<NumberExprAST>(TheLexer->NumVal);
   getNextToken(); // consume the number
   return std::move(Result);

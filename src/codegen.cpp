@@ -13,7 +13,7 @@ llvm::Value* LLVMCodegen::VisitVariable(VariableExprAST* const ast) {
   // Look this variable up in the function.
   llvm::Value *V = NamedValues[ast->Name];
   if (!V)
-    LogErrorV("Unknown variable name");
+    return LogErrorV("Unknown variable name");
   return V;
 }
 

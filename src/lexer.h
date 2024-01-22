@@ -5,9 +5,10 @@
 
 class Lexer {
 public:
-    int gettok();
     std::string IdentifierStr;
     double NumVal;
+
+    int gettok();
 };
 
 #endif
