@@ -8,6 +8,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/PassManager.h>
 
 #include "ast.h"
 
@@ -26,11 +27,13 @@ class LLVMCodegen: public Codegen {
   llvm::LLVMContext* TheContext;
   llvm::IRBuilder<>* Builder;
   llvm::Module* TheModule;
+  llvm::FunctionPassManager* TheFPM;
+  llvm::FunctionAnalysisManager* TheFAM;
   std::map<std::string, llvm::Value *> NamedValues;
 
 public:
-  LLVMCodegen(llvm::LLVMContext* ctx, llvm::IRBuilder<>* builder, llvm::Module* module)
-    : TheContext(ctx), Builder(builder), TheModule(module) {};
+  LLVMCodegen(llvm::LLVMContext* ctx, llvm::IRBuilder<>* builder, llvm::Module* module, llvm::FunctionPassManager* fpm, llvm::FunctionAnalysisManager* fam)
+    : TheContext(ctx), Builder(builder), TheModule(module), TheFPM(fpm), TheFAM(fam) {};
 
   llvm::Value* VisitNumber(NumberExprAST* const ast);
   llvm::Value* VisitVariable(VariableExprAST* const ast);

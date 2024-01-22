@@ -101,6 +101,9 @@ llvm::Function* LLVMCodegen::VisitFunction(FunctionAST* const ast) {
     // Validate the generated code, checking for consistency.
     llvm::verifyFunction(*TheFunction);
 
+    // Optimize the function
+    TheFPM->run(*TheFunction, *TheFAM);
+
     return TheFunction;
   }
   TheFunction->eraseFromParent();
