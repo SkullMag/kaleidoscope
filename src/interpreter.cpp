@@ -1,8 +1,12 @@
+#include <iostream>
+
 #include <llvm/IR/Verifier.h>
+#include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
 
 #include "interpreter.h"
 #include "toks.h"
 
+static llvm::ExitOnError ExitOnErr;
 /// top ::= definition | external | expression | ';'
 void Interpreter::MainLoop() {
   while (true) {
@@ -53,13 +57,30 @@ void Interpreter::HandleExtern() {
 }
 
 void Interpreter::HandleTopLevelExpression() {
+  llvm::ExitOnError ExitOnErr;
+
   // Evaluate a top-level expression into an anonymous function.
   if (auto FnAST = TheParser->ParseTopLevelExpr()) {
     if (auto *FnIR = FnAST->accept(*TheCodegen)) {
-      fprintf(stderr, "Parsed a top-level expr\n");
-      FnIR->print(llvm::errs());
-      fprintf(stderr, "\n");
-      FnIR->eraseFromParent();
+      // Create a ResourceTracker to track JIT'd memory allocated to our
+      // anonymous expression -- that way we can free it after executing.
+      auto RT = TheJIT->getMainJITDylib().createResourceTracker();
+
+      auto TSM = llvm::orc::ThreadSafeModule(std::move(TheCodegen->getModule()), std::move(TheCodegen->getContext()));
+      ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
+      TheCodegen->NewModule(TheJIT->getDataLayout());
+
+      // Search the JIT for the __anon_expr symbol.
+      auto ExprSymbol = ExitOnErr(TheJIT->lookup("__anon_expr"));
+      // assert(ExprSymbol && "Function not found");
+
+      // Get the symbol's address and cast it to the right type (takes no
+      // arguments, returns a double) so we can call it as a native function.
+      double (*FP)() = ExprSymbol.getAddress().toPtr<double (*)()>();
+      fprintf(stderr, "Evaluated to %f\n", FP());
+
+      // Delete the anonymous expression module from the JIT.
+      ExitOnErr(RT->remove());
     }
   } else {
     // Skip token for error recovery.

@@ -4,6 +4,8 @@
 #include "src/interpreter.h"
 #include "src/codegen.h"
 
+static llvm::ExitOnError ExitOnErr;
+
 int main() {
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmPrinter();

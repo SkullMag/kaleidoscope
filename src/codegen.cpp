@@ -6,18 +6,11 @@
 #include "errors.h"
 #include "ast.h"
 
-static llvm::ExitOnError ExitOnErr;
-
-LLVMCodegen::LLVMCodegen() {
-  TheJIT = ExitOnErr(llvm::orc::KaleidoscopeJIT::Create());
-  NewModule();
-}
-
-void LLVMCodegen::NewModule() {
-
+void LLVMCodegen::NewModule(const llvm::DataLayout &layout) {
   // Open a new context and module.
   TheContext = std::make_unique<llvm::LLVMContext>();
   TheModule = std::make_unique<llvm::Module>("my cool jit", *TheContext);
+  TheModule->setDataLayout(layout);
 
   // Create a new builder for the module.
   Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);

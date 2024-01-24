@@ -19,7 +19,6 @@
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 
 #include "ast.h"
-#include "../include/KaleidoscopeJIT.h"
 
 class Codegen {
 public:
@@ -29,12 +28,13 @@ public:
   virtual llvm::Value* VisitCall(CallExprAST* const ast) = 0;
   virtual llvm::Function* VisitPrototype(PrototypeAST* const ast) = 0;
   virtual llvm::Function* VisitFunction(FunctionAST* const ast) = 0;
-  virtual llvm::Module* getModule() = 0;
+  virtual void NewModule(const llvm::DataLayout &layout) = 0;
+  virtual std::unique_ptr<llvm::Module> &getModule() = 0;
+  virtual std::unique_ptr<llvm::LLVMContext> &getContext() = 0;
   virtual ~Codegen() = default;
 };
 
 class LLVMCodegen: public Codegen {
-  std::unique_ptr<llvm::orc::KaleidoscopeJIT> TheJIT;
   std::unique_ptr<llvm::LLVMContext> TheContext;
   std::unique_ptr<llvm::IRBuilder<>> Builder;
   std::unique_ptr<llvm::Module> TheModule;
@@ -48,8 +48,6 @@ class LLVMCodegen: public Codegen {
   std::map<std::string, llvm::Value *> NamedValues;
 
 public:
-  LLVMCodegen();
-
   llvm::Value* VisitNumber(NumberExprAST* const ast);
   llvm::Value* VisitVariable(VariableExprAST* const ast);
   llvm::Value* VisitBinaryExpr(BinaryExprAST* const ast);
@@ -57,8 +55,9 @@ public:
   llvm::Function* VisitPrototype(PrototypeAST* const ast);
   llvm::Function* VisitFunction(FunctionAST* const ast);
 
-  void NewModule();
-  llvm::Module* getModule() { return TheModule.get(); }
+  void NewModule(const llvm::DataLayout &layout);
+  std::unique_ptr<llvm::Module> &getModule() { return TheModule; }
+  std::unique_ptr<llvm::LLVMContext> &getContext() { return TheContext; }
 };
 
 #endif
