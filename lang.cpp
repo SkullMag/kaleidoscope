@@ -23,6 +23,7 @@
 static std::unique_ptr<llvm::LLVMContext> TheContext;
 static std::unique_ptr<llvm::IRBuilder<>> Builder;
 static std::unique_ptr<llvm::Module> TheModule;
+static std::unique_ptr<Lexer> TheLexer;
 static std::unique_ptr<Parser> TheParser;
 static std::unique_ptr<Interpreter> TheInterpreter;
 static std::unique_ptr<LLVMCodegen> TheCodegen;
@@ -66,7 +67,8 @@ static void InitializeModule() {
   PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
 
   // Create interpreter
-  TheParser = std::make_unique<Parser>();
+  TheLexer = std::make_unique<Lexer>();
+  TheParser = std::make_unique<Parser>(std::move(TheLexer));
   TheCodegen = std::make_unique<LLVMCodegen>(std::move(TheContext), std::move(Builder), std::move(TheModule), std::move(TheFPM), std::move(TheFAM));
   TheInterpreter = std::make_unique<Interpreter>(std::move(TheParser), std::move(TheCodegen));
 }

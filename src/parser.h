@@ -11,9 +11,7 @@ class Parser {
 public:
     int CurTok;
 
-    Parser() {
-        TheLexer = std::make_unique<Lexer>();
-    }
+    Parser(std::unique_ptr<Lexer> lexer): TheLexer(std::move(lexer)) {}
 
     int getNextToken();
     int GetTokPrecedence();

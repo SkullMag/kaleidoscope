@@ -3,7 +3,6 @@
 
 #include <map>
 #include <string>
-#include <iostream>
 
 #include <llvm/IR/Value.h>
 #include <llvm/IR/LLVMContext.h>
@@ -43,9 +42,7 @@ public:
   std::map<std::string, llvm::Value *> NamedValues;
 
   LLVMCodegen(std::unique_ptr<llvm::LLVMContext> ctx, std::unique_ptr<llvm::IRBuilder<>> builder, std::unique_ptr<llvm::Module> module, std::unique_ptr<llvm::FunctionPassManager> fpm, std::unique_ptr<llvm::FunctionAnalysisManager> fam) 
-    : TheContext(std::move(ctx)), Builder(std::move(builder)), TheModule(std::move(module)), TheFPM(std::move(fpm)), TheFAM(std::move(fam)) {
-      std::cout << "Module in codegen " << TheModule << std::endl;
-    };
+    : TheContext(std::move(ctx)), Builder(std::move(builder)), TheModule(std::move(module)), TheFPM(std::move(fpm)), TheFAM(std::move(fam)) {};
 
   llvm::Value* VisitNumber(NumberExprAST* const ast);
   llvm::Value* VisitVariable(VariableExprAST* const ast);
