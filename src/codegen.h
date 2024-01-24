@@ -9,40 +9,57 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/PassManager.h>
+#include <llvm/Analysis/LoopAnalysisManager.h>
+#include <llvm/Analysis/CGSCCPassManager.h>
+#include <llvm/Passes/StandardInstrumentations.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar/Reassociate.h>
+#include <llvm/Transforms/Scalar/GVN.h>
+#include <llvm/Transforms/Scalar/SimplifyCFG.h>
 
 #include "ast.h"
 
 
 class Codegen {
-public:
-  llvm::LLVMContext* TheContext;
-  llvm::IRBuilder<>* Builder;
-  llvm::Module* TheModule;
-  llvm::FunctionPassManager* TheFPM;
-  llvm::FunctionAnalysisManager* TheFAM;
+  std::unique_ptr<llvm::LLVMContext> TheContext;
+  std::unique_ptr<llvm::IRBuilder<>> Builder;
+  std::unique_ptr<llvm::Module> TheModule;
+  std::unique_ptr<llvm::FunctionPassManager> TheFPM;
+  std::unique_ptr<llvm::LoopAnalysisManager> TheLAM;
+  std::unique_ptr<llvm::FunctionAnalysisManager> TheFAM;
+  std::unique_ptr<llvm::CGSCCAnalysisManager> TheCGAM;
+  std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
+  std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
+  std::unique_ptr<llvm::StandardInstrumentations> TheSI;
   std::map<std::string, llvm::Value *> NamedValues;
 
+public:
   virtual llvm::Value* VisitNumber(NumberExprAST* const ast) = 0;
   virtual llvm::Value* VisitVariable(VariableExprAST* const ast) = 0;
   virtual llvm::Value* VisitBinaryExpr(BinaryExprAST* const ast) = 0;
   virtual llvm::Value* VisitCall(CallExprAST* const ast) = 0;
   virtual llvm::Function* VisitPrototype(PrototypeAST* const ast) = 0;
   virtual llvm::Function* VisitFunction(FunctionAST* const ast) = 0;
-  virtual std::unique_ptr<llvm::Module> &getModule() = 0;
+  virtual llvm::Module* getModule() = 0;
   virtual ~Codegen() = default;
 };
 
 class LLVMCodegen: public Codegen {
-public:
   std::unique_ptr<llvm::LLVMContext> TheContext;
   std::unique_ptr<llvm::IRBuilder<>> Builder;
   std::unique_ptr<llvm::Module> TheModule;
   std::unique_ptr<llvm::FunctionPassManager> TheFPM;
+  std::unique_ptr<llvm::LoopAnalysisManager> TheLAM;
   std::unique_ptr<llvm::FunctionAnalysisManager> TheFAM;
+  std::unique_ptr<llvm::CGSCCAnalysisManager> TheCGAM;
+  std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
+  std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
+  std::unique_ptr<llvm::StandardInstrumentations> TheSI;
   std::map<std::string, llvm::Value *> NamedValues;
 
-  LLVMCodegen(std::unique_ptr<llvm::LLVMContext> ctx, std::unique_ptr<llvm::IRBuilder<>> builder, std::unique_ptr<llvm::Module> module, std::unique_ptr<llvm::FunctionPassManager> fpm, std::unique_ptr<llvm::FunctionAnalysisManager> fam) 
-    : TheContext(std::move(ctx)), Builder(std::move(builder)), TheModule(std::move(module)), TheFPM(std::move(fpm)), TheFAM(std::move(fam)) {};
+public:
+  LLVMCodegen();
 
   llvm::Value* VisitNumber(NumberExprAST* const ast);
   llvm::Value* VisitVariable(VariableExprAST* const ast);
@@ -51,7 +68,8 @@ public:
   llvm::Function* VisitPrototype(PrototypeAST* const ast);
   llvm::Function* VisitFunction(FunctionAST* const ast);
 
-  std::unique_ptr<llvm::Module> &getModule() { return TheModule; }
+  void NewModule();
+  llvm::Module* getModule() { return TheModule.get(); }
 };
 
 #endif

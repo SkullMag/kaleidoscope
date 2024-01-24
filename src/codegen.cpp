@@ -5,6 +5,39 @@
 #include "errors.h"
 #include "ast.h"
 
+LLVMCodegen::LLVMCodegen() { NewModule(); }
+
+void LLVMCodegen::NewModule() {
+  // Open a new context and module.
+  TheContext = std::make_unique<llvm::LLVMContext>();
+  TheModule = std::make_unique<llvm::Module>("my cool jit", *TheContext);
+
+  // Create a new builder for the module.
+  Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
+
+  // Create pass and analysis managers
+  TheFPM = std::make_unique<llvm::FunctionPassManager>();
+  TheLAM = std::make_unique<llvm::LoopAnalysisManager>();
+  TheFAM = std::make_unique<llvm::FunctionAnalysisManager>();
+  TheCGAM = std::make_unique<llvm::CGSCCAnalysisManager>();
+  TheMAM = std::make_unique<llvm::ModuleAnalysisManager>();
+  ThePIC = std::make_unique<llvm::PassInstrumentationCallbacks>();
+  TheSI = std::make_unique<llvm::StandardInstrumentations>(*TheContext, true);
+  TheSI->registerCallbacks(*ThePIC, TheMAM.get());
+
+  // Add transform passes.
+  TheFPM->addPass(llvm::InstCombinePass());
+  TheFPM->addPass(llvm::ReassociatePass());
+  TheFPM->addPass(llvm::GVNPass());
+  TheFPM->addPass(llvm::SimplifyCFGPass());
+
+  // Register analysis passes used in these transform passes.
+  llvm::PassBuilder PB;
+  PB.registerModuleAnalyses(*TheMAM);
+  PB.registerFunctionAnalyses(*TheFAM);
+  PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
+}
+
 llvm::Value* LLVMCodegen::VisitNumber(NumberExprAST* const ast) {
     return llvm::ConstantFP::get(*TheContext, llvm::APFloat(ast->GetVal()));
 }
