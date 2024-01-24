@@ -1,8 +1,14 @@
+#include <llvm/Support/TargetSelect.h>
+
 #include "src/parser.h"
 #include "src/interpreter.h"
 #include "src/codegen.h"
 
 int main() {
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
+
   auto interpreter = std::make_unique<Interpreter>(
     std::move(std::make_unique<Parser>(std::move(std::make_unique<Lexer>()))),  // Parser
     std::move(std::make_unique<LLVMCodegen>()) // Codegen

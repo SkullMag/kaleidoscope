@@ -1,13 +1,20 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/Support/Error.h>
 
 #include "codegen.h"
 #include "errors.h"
 #include "ast.h"
 
-LLVMCodegen::LLVMCodegen() { NewModule(); }
+static llvm::ExitOnError ExitOnErr;
+
+LLVMCodegen::LLVMCodegen() {
+  TheJIT = ExitOnErr(llvm::orc::KaleidoscopeJIT::Create());
+  NewModule();
+}
 
 void LLVMCodegen::NewModule() {
+
   // Open a new context and module.
   TheContext = std::make_unique<llvm::LLVMContext>();
   TheModule = std::make_unique<llvm::Module>("my cool jit", *TheContext);

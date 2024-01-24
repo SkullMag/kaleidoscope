@@ -19,21 +19,9 @@
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 
 #include "ast.h"
-
+#include "../include/KaleidoscopeJIT.h"
 
 class Codegen {
-  std::unique_ptr<llvm::LLVMContext> TheContext;
-  std::unique_ptr<llvm::IRBuilder<>> Builder;
-  std::unique_ptr<llvm::Module> TheModule;
-  std::unique_ptr<llvm::FunctionPassManager> TheFPM;
-  std::unique_ptr<llvm::LoopAnalysisManager> TheLAM;
-  std::unique_ptr<llvm::FunctionAnalysisManager> TheFAM;
-  std::unique_ptr<llvm::CGSCCAnalysisManager> TheCGAM;
-  std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
-  std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
-  std::unique_ptr<llvm::StandardInstrumentations> TheSI;
-  std::map<std::string, llvm::Value *> NamedValues;
-
 public:
   virtual llvm::Value* VisitNumber(NumberExprAST* const ast) = 0;
   virtual llvm::Value* VisitVariable(VariableExprAST* const ast) = 0;
@@ -46,6 +34,7 @@ public:
 };
 
 class LLVMCodegen: public Codegen {
+  std::unique_ptr<llvm::orc::KaleidoscopeJIT> TheJIT;
   std::unique_ptr<llvm::LLVMContext> TheContext;
   std::unique_ptr<llvm::IRBuilder<>> Builder;
   std::unique_ptr<llvm::Module> TheModule;
