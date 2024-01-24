@@ -67,8 +67,8 @@ static void InitializeModule() {
 
   // Create interpreter
   TheParser = std::make_unique<Parser>();
-  TheCodegen = std::make_unique<LLVMCodegen>(TheContext.get(), Builder.get(), TheModule.get(), TheFPM.get(), TheFAM.get());
-  TheInterpreter = std::make_unique<Interpreter>(TheParser.get(), TheCodegen.get());
+  TheCodegen = std::make_unique<LLVMCodegen>(std::move(TheContext), std::move(Builder), std::move(TheModule), std::move(TheFPM), std::move(TheFAM));
+  TheInterpreter = std::make_unique<Interpreter>(std::move(TheParser), std::move(TheCodegen));
 }
 
 int main() {
@@ -76,20 +76,20 @@ int main() {
 
   // Install standard binary operators.
   // 1 is lowest precedence.
-  TheParser->AddBinop('<', 10);
-  TheParser->AddBinop('+', 20);
-  TheParser->AddBinop('-', 30);
-  TheParser->AddBinop('*', 40);
+  TheInterpreter->TheParser->AddBinop('<', 10);
+  TheInterpreter->TheParser->AddBinop('+', 20);
+  TheInterpreter->TheParser->AddBinop('-', 30);
+  TheInterpreter->TheParser->AddBinop('*', 40);
 
   // Prime the first token.
   fprintf(stderr, "ready> ");
-  TheParser->getNextToken();
+  TheInterpreter->TheParser->getNextToken();
 
   // Run the main "interpreter loop" now.
   TheInterpreter->MainLoop();
 
   // Print out all of the generated code.
-  TheModule->print(llvm::errs(), nullptr);
+  TheInterpreter->TheCodegen->getModule()->print(llvm::errs(), nullptr);
 
   return 0;
 }
