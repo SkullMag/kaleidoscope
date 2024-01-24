@@ -7,11 +7,11 @@
 #include "codegen.h"
 
 class Interpreter {
-  Parser* TheParser;
-  Codegen* TheCodegen;
-
 public:
-  Interpreter(Parser* parser, Codegen* codegen) : TheParser(parser), TheCodegen(codegen) {};
+  std::unique_ptr<Parser> TheParser;
+  std::unique_ptr<Codegen> TheCodegen;
+
+  Interpreter(std::unique_ptr<Parser> parser, std::unique_ptr<Codegen> codegen) : TheParser(std::move(parser)), TheCodegen(std::move(codegen)) {};
 
   // Starts an interpreter
   void MainLoop();

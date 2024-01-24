@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <iostream>
 
 #include <llvm/IR/Value.h>
 #include <llvm/IR/LLVMContext.h>
@@ -15,15 +16,6 @@
 
 class Codegen {
 public:
-  virtual llvm::Value* VisitNumber(NumberExprAST* const ast) = 0;
-  virtual llvm::Value* VisitVariable(VariableExprAST* const ast) = 0;
-  virtual llvm::Value* VisitBinaryExpr(BinaryExprAST* const ast) = 0;
-  virtual llvm::Value* VisitCall(CallExprAST* const ast) = 0;
-  virtual llvm::Function* VisitPrototype(PrototypeAST* const ast) = 0;
-  virtual llvm::Function* VisitFunction(FunctionAST* const ast) = 0;
-};
-
-class LLVMCodegen: public Codegen {
   llvm::LLVMContext* TheContext;
   llvm::IRBuilder<>* Builder;
   llvm::Module* TheModule;
@@ -31,9 +23,29 @@ class LLVMCodegen: public Codegen {
   llvm::FunctionAnalysisManager* TheFAM;
   std::map<std::string, llvm::Value *> NamedValues;
 
+  virtual llvm::Value* VisitNumber(NumberExprAST* const ast) = 0;
+  virtual llvm::Value* VisitVariable(VariableExprAST* const ast) = 0;
+  virtual llvm::Value* VisitBinaryExpr(BinaryExprAST* const ast) = 0;
+  virtual llvm::Value* VisitCall(CallExprAST* const ast) = 0;
+  virtual llvm::Function* VisitPrototype(PrototypeAST* const ast) = 0;
+  virtual llvm::Function* VisitFunction(FunctionAST* const ast) = 0;
+  virtual std::unique_ptr<llvm::Module> &getModule() = 0;
+  virtual ~Codegen() = default;
+};
+
+class LLVMCodegen: public Codegen {
 public:
-  LLVMCodegen(llvm::LLVMContext* ctx, llvm::IRBuilder<>* builder, llvm::Module* module, llvm::FunctionPassManager* fpm, llvm::FunctionAnalysisManager* fam)
-    : TheContext(ctx), Builder(builder), TheModule(module), TheFPM(fpm), TheFAM(fam) {};
+  std::unique_ptr<llvm::LLVMContext> TheContext;
+  std::unique_ptr<llvm::IRBuilder<>> Builder;
+  std::unique_ptr<llvm::Module> TheModule;
+  std::unique_ptr<llvm::FunctionPassManager> TheFPM;
+  std::unique_ptr<llvm::FunctionAnalysisManager> TheFAM;
+  std::map<std::string, llvm::Value *> NamedValues;
+
+  LLVMCodegen(std::unique_ptr<llvm::LLVMContext> ctx, std::unique_ptr<llvm::IRBuilder<>> builder, std::unique_ptr<llvm::Module> module, std::unique_ptr<llvm::FunctionPassManager> fpm, std::unique_ptr<llvm::FunctionAnalysisManager> fam) 
+    : TheContext(std::move(ctx)), Builder(std::move(builder)), TheModule(std::move(module)), TheFPM(std::move(fpm)), TheFAM(std::move(fam)) {
+      std::cout << "Module in codegen " << TheModule << std::endl;
+    };
 
   llvm::Value* VisitNumber(NumberExprAST* const ast);
   llvm::Value* VisitVariable(VariableExprAST* const ast);
@@ -41,6 +53,8 @@ public:
   llvm::Value* VisitCall(CallExprAST* const ast);
   llvm::Function* VisitPrototype(PrototypeAST* const ast);
   llvm::Function* VisitFunction(FunctionAST* const ast);
+
+  std::unique_ptr<llvm::Module> &getModule() { return TheModule; }
 };
 
 #endif
