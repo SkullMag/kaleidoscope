@@ -28,6 +28,6 @@ std::vector<std::string> &PrototypeAST::GetArgs() { return Args; };
 llvm::Function* PrototypeAST::accept(Codegen& visitor) { return visitor.VisitPrototype(this); }
 
 // FunctionAST
-PrototypeAST *FunctionAST::GetProto() { return Proto.get(); }
+std::unique_ptr<PrototypeAST> FunctionAST::GetProto() { return std::move(Proto); }
 ExprAST *FunctionAST::GetBody() { return Body.get(); }
 llvm::Function* FunctionAST::accept(Codegen& visitor) { return visitor.VisitFunction(this); }

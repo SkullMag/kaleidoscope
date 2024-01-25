@@ -36,6 +36,8 @@ void Interpreter::HandleDefinition() {
       fprintf(stderr, "Parsed a function definition.\n");
       FnIR->print(llvm::errs());
       fprintf(stderr, "\n");
+      ExitOnErr(TheJIT->addModule(llvm::orc::ThreadSafeModule(std::move(TheCodegen->getModule()), std::move(TheCodegen->getContext()))));
+      TheCodegen->NewModule(TheJIT->getDataLayout());
     }
   } else {
     // Skip token for error recovery.
@@ -49,6 +51,7 @@ void Interpreter::HandleExtern() {
       fprintf(stderr, "Parsed an extern\n");
       ProtoIR->print(llvm::errs());
       fprintf(stderr, "\n");
+      TheCodegen->addFunctionProto(ProtoAST->getName(), std::move(ProtoAST));
     }
   } else {
     // Skip token for error recovery.

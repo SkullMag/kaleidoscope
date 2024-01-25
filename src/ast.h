@@ -93,7 +93,7 @@ public:
     : Proto(std::move(Proto)), Body(std::move(Body)) {}
   llvm::Function* accept(Codegen& visitor);
 
-  PrototypeAST *GetProto();
+  std::unique_ptr<PrototypeAST> GetProto();
   ExprAST *GetBody();
 };
 

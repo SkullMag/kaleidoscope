@@ -38,6 +38,10 @@ void LLVMCodegen::NewModule(const llvm::DataLayout &layout) {
   PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
 }
 
+void LLVMCodegen::addFunctionProto(std::string name, std::unique_ptr<PrototypeAST> proto) {
+  FunctionProtos[name] = std::move(proto);
+}
+
 llvm::Value* LLVMCodegen::VisitNumber(NumberExprAST* const ast) {
     return llvm::ConstantFP::get(*TheContext, llvm::APFloat(ast->GetVal()));
 }
@@ -73,9 +77,24 @@ llvm::Value* LLVMCodegen::VisitBinaryExpr(BinaryExprAST* const ast) {
   }
 }
 
+llvm::Function *LLVMCodegen::getFunction(std::string Name) {
+  // First, see if the function has already been added to the current module.
+  if (auto *F = TheModule->getFunction(Name))
+    return F;
+
+  // If not, check whether we can codegen the declaration from some existing
+  // prototype.
+  auto FI = FunctionProtos.find(Name);
+  if (FI != FunctionProtos.end())
+    return FI->second->accept(*this);
+
+  // If no existing prototype exists, return null.
+  return nullptr;
+}
+
 llvm::Value* LLVMCodegen::VisitCall(CallExprAST* const ast) {
   // Look up the name in the global module table.
-  llvm::Function *CalleeF = TheModule->getFunction(ast->GetCallee());
+  llvm::Function *CalleeF = getFunction(ast->GetCallee());
   if (!CalleeF)
     return LogErrorV("Unknown function referenced");
 
@@ -111,10 +130,12 @@ llvm::Function* LLVMCodegen::VisitPrototype(PrototypeAST* const ast) {
 llvm::Function* LLVMCodegen::VisitFunction(FunctionAST* const ast) {
   // TODO: https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl03.html#function-code-generation
 
-  // First, check for an existing function from a previous 'extern' declaration.
-  llvm::Function *TheFunction = TheModule->getFunction(ast->GetProto()->getName());
-  if (!TheFunction)
-    TheFunction = ast->GetProto()->accept(*this);
+  // Transfer ownership of the prototype to the FunctionProtos map, but keep a
+  // reference to it for use below.
+  auto proto = ast->GetProto();
+  auto &P = *proto;
+  addFunctionProto(proto->GetName(), std::move(proto));
+  llvm::Function *TheFunction = getFunction(P.getName());
   if (!TheFunction)
     return nullptr;
 

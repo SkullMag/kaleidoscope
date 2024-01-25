@@ -31,6 +31,8 @@ public:
   virtual void NewModule(const llvm::DataLayout &layout) = 0;
   virtual std::unique_ptr<llvm::Module> &getModule() = 0;
   virtual std::unique_ptr<llvm::LLVMContext> &getContext() = 0;
+  virtual llvm::Function *getFunction(std::string name) = 0;
+  virtual void addFunctionProto(std::string name, std::unique_ptr<PrototypeAST> proto) = 0;
   virtual ~Codegen() = default;
 };
 
@@ -46,6 +48,7 @@ class LLVMCodegen: public Codegen {
   std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
   std::unique_ptr<llvm::StandardInstrumentations> TheSI;
   std::map<std::string, llvm::Value *> NamedValues;
+  std::map<std::string, std::unique_ptr<PrototypeAST>> FunctionProtos;
 
 public:
   llvm::Value* VisitNumber(NumberExprAST* const ast);
@@ -58,6 +61,8 @@ public:
   void NewModule(const llvm::DataLayout &layout);
   std::unique_ptr<llvm::Module> &getModule() { return TheModule; }
   std::unique_ptr<llvm::LLVMContext> &getContext() { return TheContext; }
+  llvm::Function *getFunction(std::string name);
+  void addFunctionProto(std::string name, std::unique_ptr<PrototypeAST> proto);
 };
 
 #endif
