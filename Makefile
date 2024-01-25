@@ -5,6 +5,7 @@ CPP_INCLUDE = -I/opt/homebrew/Cellar/llvm/17.0.6/include -D__STDC_CONSTANT_MACRO
 CPP_LIB_SEARCH_PATH = -L/opt/homebrew/Cellar/llvm/17.0.6/lib -Wl,-search_paths_first -Wl,-headerpad_max_install_names
 CPP_LD = -lLLVM-17
 CPP_STD = -std=c++20
+CPP_FLAGS = -rdynamic
 
 all:
-	$(CC) $(SRC) $(CPP_INCLUDE) $(CPP_LIB_SEARCH_PATH) $(CPP_LD) $(CPP_STD) $(OPTIM)
+	$(CC) $(SRC) $(CPP_INCLUDE) $(CPP_LIB_SEARCH_PATH) $(CPP_LD) $(CPP_STD) $(OPTIM) $(CPP_FLAGS)
