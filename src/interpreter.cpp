@@ -72,7 +72,6 @@ void Interpreter::HandleTopLevelExpression() {
 
       // Search the JIT for the __anon_expr symbol.
       auto ExprSymbol = ExitOnErr(TheJIT->lookup("__anon_expr"));
-      // assert(ExprSymbol && "Function not found");
 
       // Get the symbol's address and cast it to the right type (takes no
       // arguments, returns a double) so we can call it as a native function.
