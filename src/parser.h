@@ -26,7 +26,8 @@ public:
     std::unique_ptr<PrototypeAST> ParseExtern();
     std::unique_ptr<FunctionAST> ParseTopLevelExpr();
     std::unique_ptr<ExprAST> ParseIfExpr();
-    void AddBinop(char op, int precedence);
+    std::unique_ptr<ExprAST> ParseForExpr();
+    void AddBinop(char op, int precedence) { BinopPrecedence[op] = precedence; }
 
 private:
     std::unique_ptr<Lexer> TheLexer;

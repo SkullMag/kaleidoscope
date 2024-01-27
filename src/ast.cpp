@@ -33,4 +33,7 @@ ExprAST *FunctionAST::GetBody() { return Body.get(); }
 llvm::Function* FunctionAST::accept(Codegen& visitor) { return visitor.VisitFunction(this); }
 
 // IfExprAST
-llvm::Value *IfExprAST::accept(Codegen& visitor) { return visitor.VisitIf(this); }
+llvm::Value* IfExprAST::accept(Codegen& visitor) { return visitor.VisitIf(this); }
+
+// ForExprAST
+llvm::Value* ForExprAST::accept(Codegen& visitor) { return visitor.VisitFor(this); }

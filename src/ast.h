@@ -113,4 +113,25 @@ public:
 
 };
 
+/// ForExprAST - Expression class for for/in.
+class ForExprAST : public ExprAST {
+  std::string VarName;
+  std::unique_ptr<ExprAST> Start, End, Step, Body;
+
+public:
+  ForExprAST(const std::string &VarName, std::unique_ptr<ExprAST> Start,
+             std::unique_ptr<ExprAST> End, std::unique_ptr<ExprAST> Step,
+             std::unique_ptr<ExprAST> Body)
+    : VarName(VarName), Start(std::move(Start)), End(std::move(End)),
+      Step(std::move(Step)), Body(std::move(Body)) {}
+  llvm::Value* accept(Codegen& visitor);
+
+  std::string& GetVarName() { return VarName; }
+  std::unique_ptr<ExprAST> GetStart() { return std::move(Start); }
+  std::unique_ptr<ExprAST> GetEnd() { return std::move(End); }
+  std::unique_ptr<ExprAST> GetStep() { return std::move(Step); }
+  std::unique_ptr<ExprAST> GetBody() { return std::move(Body); }
+
+};
+
 #endif

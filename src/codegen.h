@@ -29,6 +29,8 @@ public:
   virtual llvm::Function* VisitPrototype(PrototypeAST* const ast) = 0;
   virtual llvm::Function* VisitFunction(FunctionAST* const ast) = 0;
   virtual llvm::Value* VisitIf(IfExprAST* const ast) = 0;
+  virtual llvm::Value* VisitFor(ForExprAST* const ast) = 0;
+
   virtual void NewModule(const llvm::DataLayout &layout) = 0;
   virtual std::unique_ptr<llvm::Module> &getModule() = 0;
   virtual std::unique_ptr<llvm::LLVMContext> &getContext() = 0;
@@ -59,6 +61,7 @@ public:
   llvm::Function* VisitPrototype(PrototypeAST* const ast);
   llvm::Function* VisitFunction(FunctionAST* const ast);
   llvm::Value* VisitIf(IfExprAST* const ast);
+  llvm::Value* VisitFor(ForExprAST* const ast);
 
   void NewModule(const llvm::DataLayout &layout);
   std::unique_ptr<llvm::Module> &getModule() { return TheModule; }
