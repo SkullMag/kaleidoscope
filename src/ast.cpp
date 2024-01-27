@@ -31,3 +31,6 @@ llvm::Function* PrototypeAST::accept(Codegen& visitor) { return visitor.VisitPro
 std::unique_ptr<PrototypeAST> FunctionAST::GetProto() { return std::move(Proto); }
 ExprAST *FunctionAST::GetBody() { return Body.get(); }
 llvm::Function* FunctionAST::accept(Codegen& visitor) { return visitor.VisitFunction(this); }
+
+// IfExprAST
+llvm::Value *IfExprAST::accept(Codegen& visitor) { return visitor.VisitIf(this); }

@@ -77,6 +77,7 @@ std::unique_ptr<ExprAST> Parser::ParseIdentifierExpr() {
 ///   ::= identifierexpr
 ///   ::= numberexpr
 ///   ::= parenexpr
+///   ::= ifexpr
 std::unique_ptr<ExprAST> Parser::ParsePrimary() {
   switch (CurTok) {
   default:
@@ -87,6 +88,8 @@ std::unique_ptr<ExprAST> Parser::ParsePrimary() {
     return ParseNumberExpr();
   case '(':
     return ParseParenExpr();
+  case tok_if:
+    return ParseIfExpr();
   }
 }
 
@@ -196,6 +199,35 @@ std::unique_ptr<FunctionAST> Parser::ParseTopLevelExpr() {
     return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
   }
   return nullptr;
+}
+
+std::unique_ptr<ExprAST> Parser::ParseIfExpr() {
+  getNextToken(); // eat if
+
+  // parse condition
+  auto Cond = ParseExpression();
+  if (!Cond)
+    return nullptr;
+
+  if (CurTok != tok_then) {
+    return LogError("expected then");
+  }
+  getNextToken(); // eat then
+
+  auto Then = ParseExpression();
+  if (!Then)
+    return nullptr;
+
+  if (CurTok != tok_else)
+    return LogError("expected else");
+
+  getNextToken(); // eat else
+
+  auto Else = ParseExpression();
+  if (!Else)
+    return nullptr;
+
+  return std::make_unique<IfExprAST>(std::move(Cond), std::move(Then), std::move(Else));
 }
 
 void Parser::AddBinop(char op, int precedence) {
