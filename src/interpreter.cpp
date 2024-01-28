@@ -51,7 +51,7 @@ void Interpreter::HandleExtern() {
       fprintf(stderr, "Parsed an extern\n");
       ProtoIR->print(llvm::errs());
       fprintf(stderr, "\n");
-      TheCodegen->addFunctionProto(ProtoAST->getName(), std::move(ProtoAST));
+      TheCodegen->addFunctionProto(ProtoAST->GetName(), std::move(ProtoAST));
     }
   } else {
     // Skip token for error recovery.

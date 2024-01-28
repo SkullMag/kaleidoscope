@@ -154,11 +154,35 @@ std::unique_ptr<ExprAST> Parser::ParseExpression() {
 /// prototype
 ///   ::= id '(' id* ')'
 std::unique_ptr<PrototypeAST> Parser::ParsePrototype() {
-  if (CurTok != tok_identifier)
-    return LogErrorP("Expected function name in prototype");
+  std::string FnName;
+  unsigned Kind = 0;  // 0 = identifier, 1 = unary, 2 = binary.
+  unsigned BinaryPrecedence = 30;
 
-  std::string FnName = TheLexer->IdentifierStr;
-  getNextToken();
+  switch (CurTok) {
+    default:
+      return LogErrorP("Expected function name in prototype.");
+    case tok_identifier:
+      FnName = TheLexer->IdentifierStr;
+      getNextToken();
+      break;
+    case tok_binary:
+      getNextToken();
+      if (!isascii(CurTok))
+        return LogErrorP("expected binary operator");
+      FnName = "binary";
+      FnName += (char)CurTok;
+      Kind = 2;
+      getNextToken();
+
+      // Read the precedence if present.
+      if (CurTok == tok_number) {
+        if (TheLexer->NumVal < 1 || TheLexer->NumVal > 100)
+          return LogErrorP("Invalid precedence: must be 1..100");
+        BinaryPrecedence = (unsigned)TheLexer->NumVal;
+        getNextToken();
+      }
+      break;
+  }
 
   if (CurTok != '(')
     return LogErrorP("Expected '(' in prototype");
@@ -173,7 +197,14 @@ std::unique_ptr<PrototypeAST> Parser::ParsePrototype() {
   // success.
   getNextToken();  // eat ')'.
 
-  return std::make_unique<PrototypeAST>(FnName, std::move(ArgNames));
+  // Verify right number of names for operator.
+  if (Kind && ArgNames.size() != Kind)
+    return LogErrorP("Invalid number of operands for operator");
+
+  auto resAst = std::make_unique<PrototypeAST>(FnName, std::move(ArgNames), Kind != 0, BinaryPrecedence);
+  if (resAst->IsOperator())
+    AddBinop(resAst->GetOperatorName(), BinaryPrecedence);
+  return std::move(resAst);
 }
 
 /// definition ::= 'def' prototype expression
@@ -197,7 +228,7 @@ std::unique_ptr<PrototypeAST> Parser::ParseExtern() {
 std::unique_ptr<FunctionAST> Parser::ParseTopLevelExpr() {
   if (auto E = ParseExpression()) {
     // Make an anonymous proto.
-    auto Proto = std::make_unique<PrototypeAST>("__anon_expr", std::vector<std::string>());
+    auto Proto = std::make_unique<PrototypeAST>("__anon_expr", std::vector<std::string>(), 0, 0);
     return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
   }
   return nullptr;
