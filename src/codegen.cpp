@@ -73,8 +73,16 @@ llvm::Value* LLVMCodegen::VisitBinaryExpr(BinaryExprAST* const ast) {
     // Convert bool 0/1 to double 0.0 or 1.0
     return Builder->CreateUIToFP(L, llvm::Type::getDoubleTy(*TheContext), "booltmp");
   default:
-    return LogErrorV("invalid binary operator");
+    break;
   }
+
+  // If it wasn't a builtin binary operator, it must be a user defined one. Emit
+  // a call to it.
+  llvm::Function *F = getFunction(std::string("binary") + ast->GetOp());
+  assert(F && "binary operator not found!");
+
+  llvm::Value *Ops[2] = { L, R };
+  return Builder->CreateCall(F, Ops, "binop");
 }
 
 llvm::Function *LLVMCodegen::getFunction(std::string Name) {
@@ -135,7 +143,7 @@ llvm::Function* LLVMCodegen::VisitFunction(FunctionAST* const ast) {
   auto proto = ast->GetProto();
   auto &P = *proto;
   addFunctionProto(proto->GetName(), std::move(proto));
-  llvm::Function *TheFunction = getFunction(P.getName());
+  llvm::Function *TheFunction = getFunction(P.GetName());
   if (!TheFunction)
     return nullptr;
 
@@ -288,4 +296,16 @@ llvm::Value* LLVMCodegen::VisitFor(ForExprAST* const ast) {
 
   // for expr always returns 0.0.
   return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*TheContext));
+}
+
+llvm::Value* LLVMCodegen::VisitUnary(UnaryExprAST* const ast) {
+  llvm::Value *OperandV = ast->GetOperand()->accept(*this);
+  if (!OperandV)
+    return nullptr;
+
+  llvm::Function *F = getFunction(std::string("unary") + ast->GetOpcode());
+  if (!F)
+    return LogErrorV("Unknown unary operator");
+
+  return Builder->CreateCall(F, OperandV, "unop");
 }

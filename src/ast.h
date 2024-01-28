@@ -71,15 +71,27 @@ public:
 class PrototypeAST {
   std::string Name;
   std::vector<std::string> Args;
+  bool _isOperator;
+  unsigned Precedence;  // Precedence if a binary op.
 
 public:
-  PrototypeAST(const std::string &Name, std::vector<std::string> Args)
-    : Name(Name), Args(std::move(Args)) {}
+  PrototypeAST(const std::string &Name, std::vector<std::string> Args, bool isOperator, unsigned precedence)
+    : Name(Name), Args(std::move(Args)), _isOperator(isOperator), Precedence(precedence) {}
 
-  const std::string &getName() const { return Name; }
   llvm::Function* accept(Codegen& visitor);
   std::string &GetName();
   std::vector<std::string> &GetArgs();
+  
+  bool IsUnaryOp() const { return _isOperator && Args.size() == 1; }
+  bool IsBinaryOp() const { return _isOperator && Args.size() == 2; }
+  bool IsOperator() const { return _isOperator; }
+
+  char GetOperatorName() const {
+    assert(IsUnaryOp() || IsBinaryOp());
+    return Name[Name.size() - 1];
+  }
+
+  unsigned GetBinaryPrecedence() const { return Precedence; }
 };
 
 /// FunctionAST - This class represents a function definition itself.
@@ -132,6 +144,20 @@ public:
   std::unique_ptr<ExprAST> GetStep() { return std::move(Step); }
   std::unique_ptr<ExprAST> GetBody() { return std::move(Body); }
 
+};
+
+/// UnaryExprAST - Expression class for a unary operator.
+class UnaryExprAST : public ExprAST {
+  char Opcode;
+  std::unique_ptr<ExprAST> Operand;
+
+public:
+  UnaryExprAST(char Opcode, std::unique_ptr<ExprAST> Operand)
+    : Opcode(Opcode), Operand(std::move(Operand)) {}
+
+  llvm::Value *accept(Codegen& visitor) override;
+  char GetOpcode() { return Opcode; }
+  std::unique_ptr<ExprAST> GetOperand() { return std::move(Operand); }
 };
 
 #endif
