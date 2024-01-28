@@ -297,3 +297,15 @@ llvm::Value* LLVMCodegen::VisitFor(ForExprAST* const ast) {
   // for expr always returns 0.0.
   return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*TheContext));
 }
+
+llvm::Value* LLVMCodegen::VisitUnary(UnaryExprAST* const ast) {
+  llvm::Value *OperandV = ast->GetOperand()->accept(*this);
+  if (!OperandV)
+    return nullptr;
+
+  llvm::Function *F = getFunction(std::string("unary") + ast->GetOpcode());
+  if (!F)
+    return LogErrorV("Unknown unary operator");
+
+  return Builder->CreateCall(F, OperandV, "unop");
+}
