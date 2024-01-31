@@ -67,13 +67,36 @@ llvm::Value* LLVMCodegen::VisitVariable(VariableExprAST* const ast) {
 }
 
 llvm::Value* LLVMCodegen::VisitBinaryExpr(BinaryExprAST* const ast) {
+  char Op = ast->GetOp();
+  // Special case '=' because we don't want to emit the LHS as an expression.
+  if (Op == '=') {
+    // This assume we're building without RTTI because LLVM builds that way by
+    // default. If you build LLVM with RTTI this can be changed to a
+    // dynamic_cast for automatic error checking.
+    VariableExprAST *LHSE = static_cast<VariableExprAST*>(ast->GetLHS());
+    if (!LHSE)
+      return LogErrorV("destination of '=' must be a variable");
+    
+    // Codegen the RHS.
+    llvm::Value *Val = ast->GetRHS()->accept(*this);
+    if (!Val)
+      return nullptr;
+
+    // Look up the name.
+    llvm::Value *Variable = NamedValues[LHSE->GetName()];
+    if (!Variable)
+      return LogErrorV("Unknown variable name");
+
+    Builder->CreateStore(Val, Variable);
+    return Val;
+  }
   auto L = ast->GetLHS()->accept(*this);
   auto R = ast->GetRHS()->accept(*this);
 
   if (!L || !R)
     return nullptr;
 
-  switch (ast->GetOp()) {
+  switch (Op) {
   case '+':
     return Builder->CreateFAdd(L, R, "addtmp");
   case '-':

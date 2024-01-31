@@ -10,6 +10,10 @@ extern "C" double putchard(double X) {
   fputc((char)X, stderr);
   return 0;
 }
+extern "C" double printd(double X) {
+  printf("%f\n", X);
+  return 0;
+}
 
 int main() {
   llvm::InitializeNativeTarget();
@@ -24,6 +28,7 @@ int main() {
 
   // Install standard binary operators.
   // 1 is lowest precedence.
+  parser->AddBinop('=', 2);
   parser->AddBinop('<', 10);
   parser->AddBinop('+', 20);
   parser->AddBinop('-', 30);
