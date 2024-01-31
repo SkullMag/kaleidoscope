@@ -1,10 +1,20 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/Error.h>
+#include <llvm/Transforms/Utils.h>
+#include <llvm/Transforms/Utils/Mem2Reg.h>
+#include <llvm/Transforms/Scalar.h>
 
 #include "codegen.h"
 #include "errors.h"
 #include "ast.h"
+
+/// CreateEntryBlockAlloca - Create an alloca instruction in the entry block of
+/// the function.  This is used for mutable variables etc.
+llvm::AllocaInst *LLVMCodegen::CreateEntryBlockAlloca(llvm::Function *TheFunction, const std::string &VarName) {
+  llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), TheFunction->getEntryBlock().begin());
+  return TmpB.CreateAlloca(llvm::Type::getDoubleTy(*TheContext), nullptr, VarName);
+}
 
 void LLVMCodegen::NewModule(const llvm::DataLayout &layout) {
   // Open a new context and module.
@@ -26,6 +36,7 @@ void LLVMCodegen::NewModule(const llvm::DataLayout &layout) {
   TheSI->registerCallbacks(*ThePIC, TheMAM.get());
 
   // Add transform passes.
+  TheFPM->addPass(llvm::PromotePass());
   TheFPM->addPass(llvm::InstCombinePass());
   TheFPM->addPass(llvm::ReassociatePass());
   TheFPM->addPass(llvm::GVNPass());
@@ -48,10 +59,11 @@ llvm::Value* LLVMCodegen::VisitNumber(NumberExprAST* const ast) {
 
 llvm::Value* LLVMCodegen::VisitVariable(VariableExprAST* const ast) {
   // Look this variable up in the function.
-  llvm::Value *V = NamedValues[ast->GetName()];
-  if (!V)
+  llvm::AllocaInst *A = NamedValues[ast->GetName()];
+  if (!A)
     return LogErrorV("Unknown variable name");
-  return V;
+  // Load the value
+  return Builder->CreateLoad(A->getAllocatedType(), A, ast->GetName().c_str());
 }
 
 llvm::Value* LLVMCodegen::VisitBinaryExpr(BinaryExprAST* const ast) {
@@ -153,8 +165,15 @@ llvm::Function* LLVMCodegen::VisitFunction(FunctionAST* const ast) {
 
   // Record the function arguments in the NamedValues map.
   NamedValues.clear();
-  for (auto &Arg : TheFunction->args())
-    NamedValues[std::string(Arg.getName())] = &Arg;
+  for (auto &Arg : TheFunction->args()) {
+    // Create an alloca for this variable.
+    std::string ArgName = std::string(Arg.getName());
+    llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, ArgName);
+    // Store the initial value into the alloca.
+    Builder->CreateStore(&Arg, Alloca);
+    // Add arguments to variable symbol table.
+    NamedValues[ArgName] = Alloca;
+  }
   
   if (llvm::Value *RetVal = ast->GetBody()->accept(*this)) {
     // Finish off the function.
@@ -222,15 +241,41 @@ llvm::Value* LLVMCodegen::VisitIf(IfExprAST* const ast) {
   return PN;
 }
 
+// Output for-loop as:
+//   var = alloca double
+//   ...
+//   start = startexpr
+//   store start -> var
+//   goto loop
+// loop:
+//   ...
+//   bodyexpr
+//   ...
+// loopend:
+//   step = stepexpr
+//   endcond = endexpr
+//
+//   curvar = load var
+//   nextvar = curvar + step
+//   store nextvar -> var
+//   br endcond, loop, endloop
+// outloop:
 llvm::Value* LLVMCodegen::VisitFor(ForExprAST* const ast) {
+  llvm::Function* TheFunction = Builder->GetInsertBlock()->getParent();
+  std::string VarName = ast->GetVarName();
+
+  // Create an alloca for the variable in the entry block.
+  llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
+
   // Emit the start code first, without 'variable' in scope.
-  llvm::Value *StartV = ast->GetStart()->accept(*this);
-  if (!StartV)
+  llvm::Value *StartVal = ast->GetStart()->accept(*this);
+  if (!StartVal)
     return nullptr;
+  
+  // Store the value into the alloca.
+  Builder->CreateStore(StartVal, Alloca);
 
   // Make the new basic block for the loop header, inserting after current block.
-  llvm::Function *TheFunction = Builder->GetInsertBlock()->getParent();
-  llvm::BasicBlock *PreheaderBB = Builder->GetInsertBlock();
   llvm::BasicBlock *LoopBB = llvm::BasicBlock::Create(*TheContext, "loop", TheFunction);
 
   // Insert an explicit fall through from the current block to the LoopBB.
@@ -239,14 +284,10 @@ llvm::Value* LLVMCodegen::VisitFor(ForExprAST* const ast) {
   // Start insertion in LoopBB.
   Builder->SetInsertPoint(LoopBB);
 
-  // Start the PHI node with an entry for Start.
-  llvm::PHINode *Variable = Builder->CreatePHI(llvm::Type::getDoubleTy(*TheContext), 2, ast->GetVarName());
-  Variable->addIncoming(StartV, PreheaderBB);
-
   // Within the loop, the variable is defined equal to the PHI node.  If it
   // shadows an existing variable, we have to restore it, so save it now.
-  llvm::Value *OldV = NamedValues[ast->GetVarName()];
-  NamedValues[ast->GetVarName()] = Variable;
+  llvm::AllocaInst *OldVal = NamedValues[VarName];
+  NamedValues[VarName] = Alloca;
 
   // Emit the body of the loop.  This, like any other expr, can change the
   // current BB.  Note that we ignore the value computed by the body, but don't
@@ -265,18 +306,21 @@ llvm::Value* LLVMCodegen::VisitFor(ForExprAST* const ast) {
     // If not specified, use 1.0.
     StepVal = llvm::ConstantFP::get(*TheContext, llvm::APFloat(1.0));
   }
-  llvm::Value *NextVar = Builder->CreateFAdd(Variable, StepVal, "nextvar");
 
   // Compute the end condition.
   llvm::Value *EndCond = ast->GetEnd()->accept(*this);
   if (!EndCond)
     return nullptr;
   
+  // Reload, increment, and restore the alloca. This handles the case where the body of the loop mutates the variable.
+  llvm::Value *CurVar = Builder->CreateLoad(Alloca->getAllocatedType(), Alloca, VarName.c_str());
+  llvm::Value *NextVar = Builder->CreateFAdd(CurVar, StepVal, "nextvar");
+  Builder->CreateStore(NextVar, Alloca);
+
   // Convert condition to a bool by comparing non-equal to 0.0.
   EndCond = Builder->CreateFCmpONE(EndCond, llvm::ConstantFP::get(*TheContext, llvm::APFloat(0.0)), "loopcond");
 
   // Create the "after loop" block and insert it.
-  llvm::BasicBlock *LoopEndBB = Builder->GetInsertBlock();
   llvm::BasicBlock *AfterBB = llvm::BasicBlock::Create(*TheContext, "afterloop", TheFunction);
 
   // Insert the conditional branch into the end of LoopEndBB.
@@ -285,14 +329,11 @@ llvm::Value* LLVMCodegen::VisitFor(ForExprAST* const ast) {
   // Any new code will be inserted in AfterBB.
   Builder->SetInsertPoint(AfterBB);
 
-    // Add a new entry to the PHI node for the backedge.
-  Variable->addIncoming(NextVar, LoopEndBB);
-
   // Restore the unshadowed variable.
-  if (OldV)
-    NamedValues[ast->GetVarName()] = OldV;
+  if (OldVal)
+    NamedValues[VarName] = OldVal;
   else
-    NamedValues.erase(ast->GetVarName());
+    NamedValues.erase(VarName);
 
   // for expr always returns 0.0.
   return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*TheContext));

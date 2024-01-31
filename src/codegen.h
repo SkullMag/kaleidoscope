@@ -51,7 +51,7 @@ class LLVMCodegen: public Codegen {
   std::unique_ptr<llvm::ModuleAnalysisManager> TheMAM;
   std::unique_ptr<llvm::PassInstrumentationCallbacks> ThePIC;
   std::unique_ptr<llvm::StandardInstrumentations> TheSI;
-  std::map<std::string, llvm::Value *> NamedValues;
+  std::map<std::string, llvm::AllocaInst *> NamedValues;
   std::map<std::string, std::unique_ptr<PrototypeAST>> FunctionProtos;
 
 public:
@@ -70,6 +70,9 @@ public:
   std::unique_ptr<llvm::LLVMContext> &getContext() { return TheContext; }
   llvm::Function *getFunction(std::string name);
   void addFunctionProto(std::string name, std::unique_ptr<PrototypeAST> proto);
+
+private:
+  llvm::AllocaInst* CreateEntryBlockAlloca(llvm::Function *TheFunction, const std::string &VarName);
 };
 
 #endif
