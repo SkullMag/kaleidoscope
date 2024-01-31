@@ -40,3 +40,6 @@ llvm::Value* ForExprAST::accept(Codegen& visitor) { return visitor.VisitFor(this
 
 // UnaryExprAST
 llvm::Value* UnaryExprAST::accept(Codegen& visitor) { return visitor.VisitUnary(this); }
+
+// VarExprAST
+llvm::Value* VarExprAST::accept(Codegen& visitor) { return visitor.VisitVar(this); }

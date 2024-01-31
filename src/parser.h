@@ -28,6 +28,7 @@ public:
     std::unique_ptr<ExprAST> ParseIfExpr();
     std::unique_ptr<ExprAST> ParseForExpr();
     std::unique_ptr<ExprAST> ParseUnary();
+    std::unique_ptr<ExprAST> ParseVarExpr();
     void AddBinop(char op, int precedence) { BinopPrecedence[op] = precedence; }
 
 private:
