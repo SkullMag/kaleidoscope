@@ -33,7 +33,7 @@ public:
   virtual llvm::Value* VisitUnary(UnaryExprAST* const ast) = 0;
   virtual llvm::Value* VisitVar(VarExprAST* const ast) = 0;
 
-  virtual void NewModule(const llvm::DataLayout &layout) = 0;
+  virtual void NewModule(const llvm::DataLayout &layout, const llvm::StringRef &triple) = 0;
   virtual std::unique_ptr<llvm::Module> &getModule() = 0;
   virtual std::unique_ptr<llvm::LLVMContext> &getContext() = 0;
   virtual llvm::Function *getFunction(std::string name) = 0;
@@ -67,7 +67,7 @@ public:
   llvm::Value* VisitUnary(UnaryExprAST* const ast);
   llvm::Value* VisitVar(VarExprAST* const ast);
 
-  void NewModule(const llvm::DataLayout &layout);
+  void NewModule(const llvm::DataLayout &layout, const llvm::StringRef &triple);
   std::unique_ptr<llvm::Module> &getModule() { return TheModule; }
   std::unique_ptr<llvm::LLVMContext> &getContext() { return TheContext; }
   llvm::Function *getFunction(std::string name);

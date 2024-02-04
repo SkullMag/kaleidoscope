@@ -16,11 +16,12 @@ llvm::AllocaInst *LLVMCodegen::CreateEntryBlockAlloca(llvm::Function *TheFunctio
   return TmpB.CreateAlloca(llvm::Type::getDoubleTy(*TheContext), nullptr, VarName);
 }
 
-void LLVMCodegen::NewModule(const llvm::DataLayout &layout) {
+void LLVMCodegen::NewModule(const llvm::DataLayout &layout, const llvm::StringRef &triple) {
   // Open a new context and module.
   TheContext = std::make_unique<llvm::LLVMContext>();
   TheModule = std::make_unique<llvm::Module>("my cool jit", *TheContext);
   TheModule->setDataLayout(layout);
+  TheModule->setTargetTriple(triple);
 
   // Create a new builder for the module.
   Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);

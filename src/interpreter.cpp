@@ -36,8 +36,6 @@ void Interpreter::HandleDefinition() {
       fprintf(stderr, "Parsed a function definition.\n");
       FnIR->print(llvm::errs());
       fprintf(stderr, "\n");
-      ExitOnErr(TheJIT->addModule(llvm::orc::ThreadSafeModule(std::move(TheCodegen->getModule()), std::move(TheCodegen->getContext()))));
-      TheCodegen->NewModule(TheJIT->getDataLayout());
     }
   } else {
     // Skip token for error recovery.
@@ -65,24 +63,9 @@ void Interpreter::HandleTopLevelExpression() {
   // Evaluate a top-level expression into an anonymous function.
   if (auto FnAST = TheParser->ParseTopLevelExpr()) {
     if (auto *FnIR = FnAST->accept(*TheCodegen)) {
-      // Create a ResourceTracker to track JIT'd memory allocated to our
-      // anonymous expression -- that way we can free it after executing.
-      auto RT = TheJIT->getMainJITDylib().createResourceTracker();
-
-      auto TSM = llvm::orc::ThreadSafeModule(std::move(TheCodegen->getModule()), std::move(TheCodegen->getContext()));
-      ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
-      TheCodegen->NewModule(TheJIT->getDataLayout());
-
-      // Search the JIT for the __anon_expr symbol.
-      auto ExprSymbol = ExitOnErr(TheJIT->lookup("__anon_expr"));
-
-      // Get the symbol's address and cast it to the right type (takes no
-      // arguments, returns a double) so we can call it as a native function.
-      double (*FP)() = ExprSymbol.getAddress().toPtr<double (*)()>();
-      fprintf(stderr, "Evaluated to %f\n", FP());
-
-      // Delete the anonymous expression module from the JIT.
-      ExitOnErr(RT->remove());
+      fprintf(stderr, "Parsed a top-level expression.\n");
+      FnIR->print(llvm::errs());
+      fprintf(stderr, "\n");
     }
   } else {
     // Skip token for error recovery.
