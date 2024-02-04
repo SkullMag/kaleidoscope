@@ -1,7 +1,10 @@
 #include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/TargetParser/Host.h>
+#include <llvm/Target/TargetOptions.h>
+#include <llvm/Target/TargetMachine.h>
 
 #include "src/parser.h"
 #include "src/interpreter.h"
