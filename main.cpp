@@ -10,8 +10,6 @@
 #include "src/interpreter.h"
 #include "src/codegen.h"
 
-static llvm::ExitOnError ExitOnErr;
-
 extern "C" double putchard(double X) {
   fputc((char)X, stderr);
   return 0;

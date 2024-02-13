@@ -6,7 +6,6 @@
 #include "interpreter.h"
 #include "toks.h"
 
-static llvm::ExitOnError ExitOnErr;
 /// top ::= definition | external | expression | ';'
 void Interpreter::MainLoop() {
   while (true) {
@@ -58,8 +57,6 @@ void Interpreter::HandleExtern() {
 }
 
 void Interpreter::HandleTopLevelExpression() {
-  llvm::ExitOnError ExitOnErr;
-
   // Evaluate a top-level expression into an anonymous function.
   if (auto FnAST = TheParser->ParseTopLevelExpr()) {
     if (auto *FnIR = FnAST->accept(*TheCodegen)) {
